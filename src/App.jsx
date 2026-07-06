@@ -27,8 +27,8 @@ export default function App() {
 
   // AUDIO CORE STATES 
   const [bank, setBank] = useState('A');
-  const [currentPad, setCurrentPad] = useState(1); // Defaults to Pad 1 as current
-  const [activePads, setActivePads] = useState({}); // Track actively playing pads
+  const [currentPad, setCurrentPad] = useState(1); // defaults to Pad 1 as current
+  const [activePads, setActivePads] = useState({}); // track actively playing pads
   const [bpm, setBpm] = useState(120);
 
   // AUDIO SETTINGS (PER PAD STATE) 
@@ -36,12 +36,12 @@ export default function App() {
   const [padStates, setPadStates] = useState({});
 
   // VIRTUAL MEMORY CARD 
-  const [isCardInserted, setIsCardInserted] = useState(true); // Start with card inserted for easy use
+  const [isCardInserted, setIsCardInserted] = useState(true); // start with card inserted for easy use
   const [cardBlink, setCardBlink] = useState(false);
 
   // INTERFACE / BUTTON MODES 
   const [activeEffect, setActiveEffect] = useState(null);
-  const [isPitchActive, setIsPitchActive] = useState(false); // Pitch can be active in parallel with other effects
+  const [isPitchActive, setIsPitchActive] = useState(false); // only PITCH can be active in parallel with other effects
   const [isDelMode, setIsDelMode] = useState(false);
   const [delTarget, setDelTarget] = useState(null);
   const [isRecMode, setIsRecMode] = useState(false);
@@ -72,9 +72,9 @@ export default function App() {
 
   // CORE TONE.JS REFS 
   const playersRef = useRef({});
-  const activeVoicesRef = useRef([]); // To manage max 4 voices
+  const activeVoicesRef = useRef([]); // to manage max 4 voices
 
-  // Audio chain nodes
+  // audio chain nodes
   const globalInputGain = useRef(null);
   const bitCrusher = useRef(null);
   const noiseCutFilter = useRef(null);
@@ -91,19 +91,19 @@ export default function App() {
   const mainVolumeNode = useRef(null);
   const analyserNode = useRef(null);
 
-  // Microphone and Recording
+  // microphone and Recording
   const micNode = useRef(null);
   const mediaRecorder = useRef(null);
   const recordedChunks = useRef([]);
   const recTimerInterval = useRef(null);
 
-  // Tap Tempo state
+  // tap Tempo state
   const tapTimes = useRef([]);
 
-  // Temp display reset timer
+  // temp display reset timer
   const displayResetTimer = useRef(null);
 
-  // Helper to trigger brief custom display messages
+  // helper to trigger brief custom display messages
   const triggerTempMessage = useCallback((msg, durationMs = 1500) => {
     if (displayResetTimer.current) clearTimeout(displayResetTimer.current);
     setDisplayText(msg);
@@ -118,16 +118,16 @@ export default function App() {
       await Tone.start();
     }
 
-    if (globalInputGain.current) return; // Already initialized
+    if (globalInputGain.current) return; // already initialized
 
-    // Create the processing nodes
+    // create the processing nodes
     globalInputGain.current = new Tone.Gain(1).toDestination();
     mainVolumeNode.current = new Tone.Volume(0).connect(globalInputGain.current);
 
     analyserNode.current = new Tone.Analyser('waveform', 256);
     mainVolumeNode.current.connect(analyserNode.current);
 
-    // 1. Bitcrusher (implemented as a safe WaveShaper to bypass worklet iframe CSP restrictions)
+    // 1. bitcrusher (implemented as a safe WaveShaper to bypass worklet iframe CSP restrictions)
     bitCrusher.current = new Tone.WaveShaper();
     const defaultSteps = Math.pow(2, 8); // default 8 bits
     const defaultCurve = new Float32Array(4096);
@@ -137,19 +137,19 @@ export default function App() {
     }
     bitCrusher.current.curve = defaultCurve;
 
-    // 2. Noise Cut High Cut Filter (linked to Grade)
+    // 2. noise Cut High Cut Filter (linked to Grade)
     noiseCutFilter.current = new Tone.Filter(20000, 'lowpass');
     bitCrusher.current.connect(noiseCutFilter.current);
 
-    // 3. Pitch Shifter
+    // 3. pitch shifter
     pitchShifter.current = new Tone.PitchShift(0);
     noiseCutFilter.current.connect(pitchShifter.current);
 
-    // 4. Filter 1 (low pass effect)
+    // 4. filter 1 (low pass effect)
     filter1Node.current = new Tone.Filter(20000, 'lowpass');
     pitchShifter.current.connect(filter1Node.current);
 
-    // 5. Filter 2 (resonant sweep peaking filter)
+    // 5. filter 2 (resonant sweep peaking filter)
     filter2Node.current = new Tone.BiquadFilter({
       type: 'peaking',
       frequency: 20000,
@@ -158,7 +158,7 @@ export default function App() {
     });
     filter1Node.current.connect(filter2Node.current);
 
-    // 6. Ring Modulator sub-chain (wet/dry series block)
+    // 6. ring Modulator sub-chain (wet/dry series block)
     ringModInput.current = new Tone.Gain();
     filter2Node.current.connect(ringModInput.current);
 
@@ -174,7 +174,7 @@ export default function App() {
     }).start();
     ringModCarrier.current.connect(ringModMultiplier.current.gain);
 
-    // Route inputs through dry & wet
+    // route inputs through dry & wet
     ringModInput.current.connect(ringModDry.current);
     ringModInput.current.connect(ringModMultiplier.current);
     ringModMultiplier.current.connect(ringModWet.current);
@@ -182,7 +182,7 @@ export default function App() {
     ringModDry.current.connect(ringModOutput.current);
     ringModWet.current.connect(ringModOutput.current);
 
-    // 7. Delay Node
+    // 7. delay Node
     delayNode.current = new Tone.FeedbackDelay({
       delayTime: 0.25,
       feedback: 0.4,
@@ -190,14 +190,14 @@ export default function App() {
     });
     ringModOutput.current.connect(delayNode.current);
 
-    // Connect Delay Node output to the Main Volume Node input
+    // connect delayNode output to the mainVolumeNode input
     delayNode.current.connect(mainVolumeNode.current);
 
-    // Setup microphone node
+    // setup microphone node
     micNode.current = new Tone.UserMedia();
   };
 
-  // Setup initial volume mapping
+  // setup initial volume mapping
   useEffect(() => {
     if (mainVolumeNode.current && isPowerOn) {
       // Map 0-100 masterVolume to Tone.js decibels
@@ -206,20 +206,20 @@ export default function App() {
     }
   }, [masterVolume, isPowerOn]);
 
-  // Load Factory Presets on Power On / Mount
+  // load factory presets on Power On / Mount
   useEffect(() => {
     const loadPresets = async () => {
       setIsBooting(true);
       setDisplayText('2.0.2');
       setIsBlinkingDisplay(true);
 
-      // Generate the lo-fi synthesized factory sound buffers
+      // generate the lo-fi synthesized factory sound buffers
       const factoryBuffers = await generateFactorySamples();
 
       const states = {};
       const settings = {};
 
-      // Initialize all banks and pads (A, B, C, D)
+      // initialize all banks and pads (A, B, C, D)
       ['A', 'B', 'C', 'D'].forEach(b => {
         for (let n = 1; n <= 8; n++) {
           const key = `${b}-${n}`;
@@ -240,7 +240,7 @@ export default function App() {
       setPadSettings(settings);
       setPadStates(states);
 
-      // Simulate vintage 2.0.2 boot sequence
+      // simulate vintage 2.0.2 boot sequence
       setTimeout(() => {
         setIsBooting(false);
         setIsBlinkingDisplay(false);
@@ -258,7 +258,7 @@ export default function App() {
     }
   }, [isPowerOn]);
 
-  // Dynamic meter analyser & Peak LED monitoring
+  // dynamic meter analyser & Peak LED monitoring
   useEffect(() => {
     let animationId;
 
@@ -271,7 +271,7 @@ export default function App() {
 
       let maxVal = 0;
 
-      // 1. Monitor live playing level for output peaking
+      // 1. monitor live playing level for output peaking
       if (analyserNode.current) {
         const audioValues = analyserNode.current.getValue();
         for (let i = 0; i < audioValues.length; i++) {
@@ -280,9 +280,9 @@ export default function App() {
         }
       }
 
-      // 2. Monitor recording/mic level if active or in standby
+      // 2. monitor recording/mic level if active or in standby
       if ((isRecStandby || isRecMode || isSourceActive) && micNode.current) {
-        // Mock recording input volume slightly fluctuating + reading actual stream values if needed
+        // mock recording input volume slightly fluctuating + reading actual stream values if needed
         const inputVol = (recLevelValue / 100) * 0.4 + (Math.random() * 0.15);
         if (inputVol > maxVal) maxVal = inputVol;
         setInputLevel(inputVol);
@@ -290,7 +290,7 @@ export default function App() {
         setInputLevel(0);
       }
 
-      // Peak threshold (e.g. 0.6 rms or absolute)
+      // peak threshold (e.g. 0.6 rms or absolute)
       if (maxVal > 0.45) {
         setPeakLight(true);
         setTimeout(() => setPeakLight(false), 80);
@@ -304,7 +304,7 @@ export default function App() {
   }, [isPowerOn, isRecStandby, isRecMode, isSourceActive, recLevelValue]);
 
   // CONTROLLER PARAMS UPDATER 
-  // When activeEffect or control knob values change, update the audio engine parameters
+  // when activeEffect or control knob values change, update the audio engine parameters
   const updateAudioNodesForPad = (padKey) => {
     if (!bitCrusher.current || !noiseCutFilter.current || !pitchShifter.current || !delayNode.current || !filter1Node.current || !filter2Node.current || !ringModDry.current || !ringModWet.current || !ringModCarrier.current) {
       return;
@@ -313,7 +313,7 @@ export default function App() {
     const settings = padSettings[padKey];
     if (!settings) return;
 
-    // 1. Bitcrushing & High cut (Sampling Grade)
+    // 1. bitcrushing & High cut (Sampling Grade)
     const grades = {
       'HI-FI': { bits: 12, freq: 15000 },
       'STANDARD': { bits: 8, freq: 8000 },
@@ -335,17 +335,17 @@ export default function App() {
 
     noiseCutFilter.current.frequency.value = gradeConfig.freq;
 
-    // 2. Pitch shifting (-12 to +12 semitones)
+    // 2. pitch shifting (-12 to +12 semitones)
     if (isPitchActive || activeEffect === 'PITCH') {
       pitchShifter.current.pitch = settings.pitchShift;
     } else {
       pitchShifter.current.pitch = 0;
     }
 
-    // 3. Time Stretch (playback rate 0.5 to 1.5)
+    // 3. time Stretch (playback rate 0.5 to 1.5)
     // Applied directly on Player trigger
 
-    // 4. Delay node
+    // 4. delay node
     if (activeEffect === 'DELAY') {
       delayNode.current.delayTime.value = settings.delayTime;
       delayNode.current.wet.value = 0.55;
@@ -353,14 +353,14 @@ export default function App() {
       delayNode.current.wet.value = 0;
     }
 
-    // 5. Filter 1 Effect
+    // 5. filter 1 Effect
     if (activeEffect === 'FILTER 1') {
       filter1Node.current.frequency.value = settings.filter1Freq;
     } else {
       filter1Node.current.frequency.value = 20000; // bypass (open)
     }
 
-    // 6. Filter 2 Effect
+    // 6. filter 2 Effect
     if (activeEffect === 'FILTER 2') {
       filter2Node.current.frequency.value = settings.filter2Freq;
       filter2Node.current.Q.value = 7.0; // resonant peaks
@@ -371,7 +371,7 @@ export default function App() {
       filter2Node.current.Q.value = 1.0;
     }
 
-    // 7. Ring Modulator Carrier Frequency
+    // 7. ring Modulator Carrier Frequency
     if (activeEffect === 'RING MOD') {
       ringModCarrier.current.frequency.setValueAtTime(settings.ringModFreq, Tone.context.currentTime);
       ringModDry.current.gain.setValueAtTime(0.3, Tone.context.currentTime); // feed carrier multiply
@@ -382,13 +382,13 @@ export default function App() {
     }
   };
 
-  // Helper to get active player of a pad
+  // helper to get active player of a pad
   const getOrCreatePlayer = (padKey) => {
     const state = padStates[padKey];
     if (!state || !state.isLoaded || !state.buffer) return null;
 
     if (!playersRef.current[padKey]) {
-      // Connect specifically to our BitCrusher global effects input
+      // connect specifically to our BitCrusher global effects input
       const p = new Tone.Player(state.buffer);
       if (bitCrusher.current) {
         p.connect(bitCrusher.current);
@@ -412,7 +412,7 @@ export default function App() {
     const endFrame = Math.floor(settings.endOffset * totalFrames);
     const newLength = Math.max(100, endFrame - startFrame);
 
-    // Slice buffer
+    // slice buffer
     const audioCtx = Tone.context;
     const newBuffer = audioCtx.createBuffer(
       buffer.numberOfChannels,
@@ -428,7 +428,7 @@ export default function App() {
       }
     }
 
-    // Reset offsets back to full (0 to 1) for the cropped sound
+    // reset offsets back to full (0 to 1) for the cropped sound
     setPadSettings(prev => ({
       ...prev,
       [padKey]: {
@@ -446,7 +446,7 @@ export default function App() {
       }
     }));
 
-    // Dispose old player
+    // dispose old player
     if (playersRef.current[padKey]) {
       playersRef.current[padKey].dispose();
       delete playersRef.current[padKey];
@@ -463,13 +463,13 @@ export default function App() {
     const padKey = `${bank}-${num}`;
     setCurrentPad(num);
 
-    // Delete pad sequence
+    // delete pad sequence
     if (isDelMode) {
       if (delTarget === null) {
         setDelTarget(padKey);
         triggerTempMessage('dEL', 2000);
       } else if (delTarget === padKey) {
-        // Confirmed double click on target pad in delete mode DELETE IT!
+        // confirmed double click on target pad in delete mode DELETE IT!
         if (playersRef.current[padKey]) {
           playersRef.current[padKey].dispose();
           delete playersRef.current[padKey];
@@ -489,19 +489,19 @@ export default function App() {
       return;
     }
 
-    // Record pad sequence
+    // record pad sequence
     if (isRecStandby) {
       setRecTarget(padKey);
       startRecordingProcess(padKey);
       return;
     }
 
-    // Normal play path
+    // normal play path
     const player = getOrCreatePlayer(padKey);
     const settings = padSettings[padKey];
 
     if (player && settings) {
-      // Manage 4-voice polyphony!
+      // manage 4-voice polyphony!
       if (activeVoicesRef.current.length >= 4) {
         const oldestPadKey = activeVoicesRef.current.shift();
         if (oldestPadKey && playersRef.current[oldestPadKey]) {
@@ -510,25 +510,25 @@ export default function App() {
         }
       }
 
-      // Start tracking this voice
+      // start tracking this voice
       if (!activeVoicesRef.current.includes(padKey)) {
         activeVoicesRef.current.push(padKey);
       }
 
       updateAudioNodesForPad(padKey);
 
-      // Apply settings
+      // apply settings
       player.reverse = settings.isReverse;
       player.loop = settings.isLoop;
 
-      // Apply time stretch (TIME effect adjusts speed)
+      // apply time stretch (TIME effect adjusts speed)
       if (activeEffect === 'TIME') {
         player.playbackRate = settings.timeStretch;
       } else {
         player.playbackRate = 1.0;
       }
 
-      // Calculate start and end offsets
+      // calculate start and end offsets
       const duration = player.buffer.duration;
       const startSec = settings.startOffset * duration;
       const endSec = settings.endOffset * duration;
@@ -536,7 +536,7 @@ export default function App() {
 
       player.stop();
 
-      // Trigger playing states
+      // trigger playing states
       setActivePads(prev => ({ ...prev, [padKey]: true }));
 
       if (settings.isLoop) {
@@ -546,7 +546,7 @@ export default function App() {
       } else {
         player.start(undefined, startSec, playDuration);
 
-        // Non-loop trigger timer (One shot auto off indicator)
+        // non-loop trigger timer (one shot auto off indicator)
         if (settings.isTrigger) {
           const timeoutDur = (playDuration / player.playbackRate) * 1000;
           setTimeout(() => {
@@ -973,7 +973,7 @@ export default function App() {
       {/* let me tel you som */}
       <div className="max-w-[680px] w-full text-center mb-6 space-y-2">
         <p className="text-xs text-zinc-400 font-medium">
-          There are pre-loaded sounds in the pads in bank A but you can download any sound you want. Have fun! 
+          There are pre-loaded sounds in the pads in bank A but you can download any sound you want. Have fun!
         </p>
       </div>
 
@@ -1049,8 +1049,8 @@ export default function App() {
                     onClick={() => toggleEffect(fx.name)}
                     disabled={!isPowerOn}
                     className={`h-7 cursor-pointer text-[9px] font-black rounded-sm border-b-2 border-black active:translate-y-0.5 active:border-b-0 uppercase transition-all flex flex-col items-center justify-center gap-0.5 ${fx.active
-                        ? 'bg-[#ff1a1a] text-white'
-                        : 'bg-[#b0b0b0] text-black hover:bg-white'
+                      ? 'bg-[#ff1a1a] text-white'
+                      : 'bg-[#b0b0b0] text-black hover:bg-white'
                       }`}
                   >
                     <span className="scale-90 tracking-tighter leading-none">{fx.name}</span>
@@ -1122,8 +1122,8 @@ export default function App() {
                       <span
                         key={b}
                         className={`text-[11px] font-black px-2 rounded-sm ${isActive
-                            ? 'bg-[#ff1a1a] text-black shadow-[0_0_8px_#ff1a1a]'
-                            : 'text-[#333]'
+                          ? 'bg-[#ff1a1a] text-black shadow-[0_0_8px_#ff1a1a]'
+                          : 'text-[#333]'
                           }`}
                       >
                         {b}
@@ -1181,7 +1181,7 @@ export default function App() {
               }
             ].map((col, idx) => (
               <div key={idx} className="flex flex-col items-center justify-between">
-                {/* Dynamic LED stack for column options */}
+                {/* Dynamic led stack for column options */}
                 <div className="flex flex-col gap-1 items-start bg-black/60 px-1.5 py-2 rounded border border-zinc-900 w-full mb-1.5">
                   {col.options.map(opt => {
                     const isLit = col.active === opt;
@@ -1320,12 +1320,12 @@ export default function App() {
                     onMouseLeave={() => stopPad(num)}
                     disabled={!isPowerOn}
                     className={`cursor-pointer w-full h-full rounded border-b-8 border-black font-black text-4xl flex flex-col items-center justify-center transition-all relative ${isPlaying
-                        ? 'bg-[#ff1a1a] text-white border-black shadow-[0_0_20px_rgba(255,26,26,0.6)] translate-y-2 border-b-0'
-                        : isFocused
-                          ? 'bg-zinc-100 text-zinc-950 border-black ring-2 ring-red-500/50'
-                          : isLoaded
-                            ? 'bg-zinc-200 text-zinc-800'
-                            : 'bg-[#eee] text-black border-black shadow-lg'
+                      ? 'bg-[#ff1a1a] text-white border-black shadow-[0_0_20px_rgba(255,26,26,0.6)] translate-y-2 border-b-0'
+                      : isFocused
+                        ? 'bg-zinc-100 text-zinc-950 border-black ring-2 ring-red-500/50'
+                        : isLoaded
+                          ? 'bg-zinc-200 text-zinc-800'
+                          : 'bg-[#eee] text-black border-black shadow-lg'
                       }`}
                   >
                     {isLoaded && !isPlaying && (
@@ -1351,8 +1351,8 @@ export default function App() {
               }}
               disabled={!isPowerOn}
               className={`cursor-pointer w-full h-full rounded border-b-8 border-black text-[10px] font-black uppercase leading-none flex flex-col items-center justify-center gap-1 transition-all ${isHoldMode
-                  ? 'bg-gradient-to-b from-amber-400 to-amber-500 text-black border-black shadow-[0_0_15px_rgba(245,158,11,0.6)] translate-y-1 border-b-2'
-                  : 'bg-[#ccc] text-black hover:bg-white'
+                ? 'bg-gradient-to-b from-amber-400 to-amber-500 text-black border-black shadow-[0_0_15px_rgba(245,158,11,0.6)] translate-y-1 border-b-2'
+                : 'bg-[#ccc] text-black hover:bg-white'
                 }`}
             >
               <span className="text-sm">⏸</span>
@@ -1364,8 +1364,8 @@ export default function App() {
               onClick={handleToggleSource}
               disabled={!isPowerOn}
               className={`cursor-pointer w-full h-full rounded border-b-8 border-black text-[10px] font-black uppercase leading-none flex flex-col items-center justify-center gap-1 transition-all ${isSourceActive
-                  ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-black shadow-[0_0_15px_rgba(16,185,129,0.6)] translate-y-1 border-b-2'
-                  : 'bg-[#ccc] text-black hover:bg-white'
+                ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-black shadow-[0_0_15px_rgba(16,185,129,0.6)] translate-y-1 border-b-2'
+                : 'bg-[#ccc] text-black hover:bg-white'
                 }`}
             >
               <Mic className="w-4 h-4" />
