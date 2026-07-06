@@ -1,6 +1,6 @@
 # Web Boss SP-202 Sampler q(≧▽≦q)
 Веб-эмуляция лоу-фай семплера **Boss Dr. Sample SP-202**, 1998 г.
-* проект доступен по ссылке https://sp-202-online.netlify.app/
+* проект доступен в свободном доступе по ссылке https://sp-202-online.netlify.app/
 
 ## Стек 
 * **React** 
